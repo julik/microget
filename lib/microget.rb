@@ -26,6 +26,8 @@ module Microget
     raise ('Only plain HTTP is supported (%s)' % uri) unless uri.scheme == 'http'
     raise "Unknown host" unless uri.host
     
+    # Some reading on what might be usable here:
+    # http://www.mikeperham.com/2009/03/15/socket-timeouts-in-ruby/
     socket = TCPSocket.open(uri.host, uri.port || 80)
     socket.write("GET #{uri.request_uri} HTTP/1.1\r\n")
     
