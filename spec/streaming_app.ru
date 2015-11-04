@@ -61,6 +61,10 @@ map '/with-content-length' do
   run StreamerWithLength
 end
 
+map '/' do
+  run ->(env) { [200, {}, ['Yes']]}
+end
+
 map '/alive' do
   run ->(env) { [200, {}, ['Yes']]}
 end

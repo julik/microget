@@ -3,4 +3,3 @@ $LOAD_PATH.unshift(File.dirname(__FILE__))
 
 require 'rspec'
 require 'microget'
-require_relative 'server_runner'
