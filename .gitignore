@@ -1,3 +1,5 @@
+server_runner_*
+
 # rcov generated
 coverage
 coverage.data
