@@ -69,22 +69,23 @@ module Microget
   def perform_get(uri, request_headers: {}, chunk_size: 1024 * 1024 * 5)
     status_code, header_hash, socket = get_status_headers_and_body_socket(uri, request_headers: request_headers)
     body_bytes_received = 0
+    
+    # Yield the status and headers once with an empty response
+    # so that the client can bail out of the request even before the body
+    # starts to arrive
+    return body_bytes_received unless yield(status_code, header_hash, '')
+    
     # ...and then just read the body, without any buffering, using a non-blocking read
     while !socket.eof?
       begin
         data = socket.read_nonblock(chunk_size)
         body_bytes_received += data.bytesize
-        return unless yield(status_code, header_hash, data)
+        continue_reading = yield(status_code, header_hash, data)
+        return body_bytes_received unless continue_reading 
       rescue IO::WaitReadable
         IO.select([socket], [], SOCKET_TIMEOUT)
         retry
       end
-    end
-    
-    # Yield the status and headers once with an empty response
-    # so that the client gets at least something.
-    if body_bytes_received.zero?
-      yield(status_code, header_hash, '')
     end
     
     body_bytes_received

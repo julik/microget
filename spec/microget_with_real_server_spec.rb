@@ -5,7 +5,6 @@ describe "Microget running against a real server" do
     rack_app = File.expand_path(File.join(__dir__, 'streaming_app.ru'))
     @server = Microget::ServerRunner.new(:puma, "bundle exec puma --port %d %s", 9393, rack_app)
     @server.start!
-    sleep 0.5 until @server.running?
   end
   
   after :all do
@@ -48,6 +47,9 @@ describe "Microget running against a real server" do
         time_deltas_and_chunks << [Time.now - t, body_chunk]
         t = Time.now
       end
+      
+      first_chunk_and_delta = time_deltas_and_chunks.shift
+      expect(first_chunk_and_delta[1]).to be_empty # First chunk is empty to allow header/status checks
       
       time_deltas_and_chunks.each do |(delta, chunk_contents)|
         expect(chunk_contents).to include('Message number ')
