@@ -5,7 +5,7 @@ require 'socket'
 module Microget
   autoload :ServerRunner, File.dirname(__FILE__) + '/microget/server_runner'
   
-  VERSION = '1.1.0'
+  VERSION = '1.1.1'
   
   extend self
 
