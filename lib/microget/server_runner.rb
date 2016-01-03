@@ -7,8 +7,12 @@ class Microget::ServerRunner < Struct.new(:name, :command, :port, :rackup_file_p
   def command
     super % [port, rackup_file_path]
   end
-   
-  def start!
+  
+  # Start the server as a subprocess and store its PID.
+  #
+  # @param timeout[Fixnum] the number of seconds to wait for the server to boot up 
+  # @return [TrueClass] true
+  def start!(timeout: SHOULD_CONNECT_WITHIN)
     # Boot Puma in a forked process
     @pid = fork do
       $stderr.puts "Spinning up with #{command.inspect}"
@@ -36,19 +40,27 @@ class Microget::ServerRunner < Struct.new(:name, :command, :port, :rackup_file_p
         @running = true
         break
       rescue Errno::ECONNREFUSED
-        if (Time.now - t) > SHOULD_CONNECT_WITHIN # Timeout when starting
+        if (Time.now - t) > timeout # The server is still not on, bail out
           raise "Could not get the server started in 2 seconds, something might be misconfigured"
         end
       end
     end
     
     trap("TERM") { stop! }
+    true
   end
   
+  # Tells whether the server is currently running
+  #
+  # @return [TrueClass, FalseClass]
   def running?
     !!@running
   end
   
+  # Stops the server by issuing progressively harsher signals to it's process
+  # (in the order of TERM, TERM, KILL).
+  #
+  # @return [TrueClass]
   def stop!
     return unless @pid
     
@@ -56,5 +68,6 @@ class Microget::ServerRunner < Struct.new(:name, :command, :port, :rackup_file_p
     %W( TERM TERM KILL ).each {|sig| Process.kill(sig, @pid); sleep 0.5 }
     @pid = nil
     @running = false
+    true
   end
 end
