@@ -1,15 +1,15 @@
 require_relative 'helper'
 
 describe "Microget running against a real server" do
-  before :all do
-    rack_app = File.expand_path(File.join(__dir__, 'streaming_app.ru'))
-    @server = Microget::ServerRunner.new(:puma, "bundle exec puma --port %d %s", 9393, rack_app)
-    @server.start!
-  end
-  
-  after :all do
-    @server.stop!
-  end
+#  before :all do
+#    rack_app = File.expand_path(File.join(__dir__, 'streaming_app.ru'))
+#    @server = Microget::ServerRunner.new(:puma, "bundle exec puma --port %d %s", 9393, rack_app)
+#    @server.start!
+#  end
+#  
+#  after :all do
+#    @server.stop!
+#  end
   
   describe '.perform_get' do
     
@@ -50,11 +50,22 @@ describe "Microget running against a real server" do
       
       first_chunk_and_delta = time_deltas_and_chunks.shift
       expect(first_chunk_and_delta[1]).to be_empty # First chunk is empty to allow header/status checks
-      
+      time_deltas_and_chunks.each do |i|
+        $stderr.puts i.inspect
+      end
       time_deltas_and_chunks.each do |(delta, chunk_contents)|
         expect(chunk_contents).to include('Message number ')
         expect(delta).to be_within(0.2).of(1.0) # The server "drips" down one message every second, approximately
       end
+    end
+    
+    it 'raises a ReadTimeout if reads take too long' do
+      uri = 'http://localhost:9393/very-slow'
+      expect {
+        Microget.perform_get(uri, timeout: 0.1, chunk_size: 256) do | status, headers, body_chunk|
+          true # Continue reading
+        end
+      }.to raise_error(Microget::ReadTimeout)
     end
   end
 end

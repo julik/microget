@@ -46,9 +46,24 @@ map '/huge-response' do
   }
 end
 
+class VerySlowBody
+  def each
+    100.times do
+      sleep 20
+      yield 'Yes'
+    end
+  end
+end
+
+map '/very-slow' do
+  run ->(env) {
+    [200, {'Content-Length' => (100 * 3).to_s}, VerySlowBody.new]
+  }
+end
+
 map '/empty-response' do
   run ->(env) {
-    [304, {'Location' => 'http://elsewhere.com'}, []]
+    [304, {'Location' => 'http://elsewhere.com', 'Content-Length' => 0}, []]
   }
 end
 
