@@ -5,7 +5,7 @@ require 'socket'
 module Microget
   autoload :ServerRunner, File.dirname(__FILE__) + '/microget/server_runner'
   
-  VERSION = '1.1.1'
+  VERSION = '1.1.2'
   
   extend self
 
@@ -75,12 +75,18 @@ module Microget
     # starts to arrive
     return body_bytes_received unless yield(status_code, header_hash, '')
     
+    # We are using read_nonblock, and it allows a buffer to be passed in.
+    # The advantage of passing a buffer is that the same Ruby string is
+    # reused for all the reads, and only the string contents gets reallocated.
+    # We can reduce GC pressure this way.
+    body_buf = ''
+    
     # ...and then just read the body, without any buffering, using a non-blocking read
     while !socket.eof?
       begin
-        data = socket.read_nonblock(chunk_size)
+        data = socket.read_nonblock(chunk_size, body_buf)
         body_bytes_received += data.bytesize
-        continue_reading = yield(status_code, header_hash, data)
+        continue_reading = yield(status_code, header_hash, body_buf)
         return body_bytes_received unless continue_reading 
       rescue IO::WaitReadable
         IO.select([socket], [], SOCKET_TIMEOUT)
