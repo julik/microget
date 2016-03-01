@@ -53,7 +53,7 @@ module Microget
     socket.syswrite("Connection: close\r\n") # Do not request keepalive
     
     # Write all the request headers
-    request_headers.each { |k, v| socket.syswrite_nonblock("%s: %s\r\n" % [k,v]) }
+    request_headers.each { |k, v| socket.syswrite("%s: %s\r\n" % [k,v]) }
     
     # Terminate the request
     socket.syswrite("\r\n")
