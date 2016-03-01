@@ -28,7 +28,7 @@ module Microget
   # @param timeout[Numeric] the open and read timeout for the socket select()
   # @param request_headers[Hash] all the request headers to send with the request
   # @return [Array<Numeric, Hash, Socket>] the HTTP status code, the header hash and the socket the body can be read from
-  def get_status_headers_and_body_socket(uri, timeout: SOCKET_TIMEOUT, request_headers: {})
+  def get_status_headers_and_body_socket(uri, open_timeout: SOCKET_TIMEOUT, timeout: SOCKET_TIMEOUT, request_headers: {})
     uri = URI(uri.to_s)
     raise ('Only plain HTTP is supported (%s)' % uri) unless uri.scheme == 'http'
     raise "Unknown host" unless uri.host
@@ -36,7 +36,7 @@ module Microget
     # Some reading on what might be usable here:
     # http://www.mikeperham.com/2009/03/15/socket-timeouts-in-ruby/
     # https://spin.atomicobject.com/2013/09/30/socket-connection-timeout-ruby/
-    socket = connect(uri.host, uri.port, timeout)
+    socket = connect(uri.host, uri.port, open_timeout)
     #socket = TCPSocket.new(uri.host, uri.port) #, timeout)
     
     # Note that if you do Socket#write it switches the Socket into the "buffered"
@@ -94,9 +94,8 @@ module Microget
   # @param chunk_size[Numeric] what size to feed to read() when reading the response from the socket
   # @yield [Array<Numeric, Hash, String>] status code, header hash, mutable buffer with the last chunk.
   # @return [Numeric] the total number of body bytes read from the socket 
-  def perform_get(uri, request_headers: {}, timeout: SOCKET_TIMEOUT, chunk_size: 1024 * 1024 * 5)
-    status_code, header_hash, socket = get_status_headers_and_body_socket(uri, 
-      timeout: timeout, request_headers: request_headers)
+  def perform_get(uri, chunk_size: 1024 * 1024 * 5, read_timeout: SOCKET_TIMEOUT, **status_headers_and_body_options)
+    status_code, header_hash, socket = get_status_headers_and_body_socket(uri, **status_headers_and_body_options)
     body_bytes_received = 0
     
     # We are using read_nonblock, and it allows a buffer to be passed in.
@@ -112,7 +111,7 @@ module Microget
     return body_bytes_received unless yield(status_code, header_hash, body_buf)
     
     # ...and then just read the body, without any buffering, using a non-blocking read
-    while did_receive = _nonblock_buf_fill(socket, chunk_size, body_buf, timeout)
+    while did_receive = _nonblock_buf_fill(socket, chunk_size, body_buf, read_timeout)
       body_bytes_received += body_buf.bytesize
       do_continue = yield(status_code, header_hash, body_buf)
       return body_bytes_received unless do_continue 
@@ -205,12 +204,15 @@ module Microget
     # Convert the passed host into structures the non-blocking calls
     # can deal with
     addrs = Socket.getaddrinfo(host, nil)
-    addr = addrs[-1] # use the last one, the first one will be IPv6
-    sockaddr = Socket.pack_sockaddr_in(port, addr[3])
+    ip4_addrinfo = addrs.find{|e| e[0] == 'AF_INET'}
+    ip4_ip = ip4_addrinfo[2] # use the last one, the first one will be IPv6
+    ip4_socktype = :AF_INET
+    
+    sockaddr = Socket.pack_sockaddr_in(port, ip4_ip)
     
     #(Socket::AF_INET, Socket::SOCK_STREAM, 0)
     # Create a Kgio::Socket instead of the standard one
-    Kgio::Socket.new(Socket.const_get(addr[0]), Socket::SOCK_STREAM, 0).tap do |socket|
+    Kgio::Socket.new(Socket.const_get(ip4_socktype), Socket::SOCK_STREAM, 0).tap do |socket|
       socket.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
  
       begin

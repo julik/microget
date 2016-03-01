@@ -17,7 +17,7 @@ describe "Microget running against a real server" do
       uri = 'http://localhost:9393/empty-response'
       expect { |b|
         Microget.perform_get(uri, &b)
-      }.to yield_with_args(304, {"Location"=>"http://elsewhere.com", "Connection"=>"close"}, "")
+      }.to yield_with_args(304, {"Location"=>"http://elsewhere.com", "Connection"=>"close", "Content-Length"=>"0"}, "")
     end
     
     it 'streams 512 megabytes of random data from the server without too much trouble' do
@@ -60,7 +60,7 @@ describe "Microget running against a real server" do
     it 'raises a ReadTimeout if reads take too long' do
       uri = 'http://localhost:9393/very-slow'
       expect {
-        Microget.perform_get(uri, timeout: 0.1, chunk_size: 256) do | status, headers, body_chunk|
+        Microget.perform_get(uri, read_timeout: 0.1, chunk_size: 256) do | status, headers, body_chunk|
           true # Continue reading
         end
       }.to raise_error(Microget::ReadTimeout)
