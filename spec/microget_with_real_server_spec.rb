@@ -1,15 +1,15 @@
 require_relative 'helper'
 
 describe "Microget running against a real server" do
-#  before :all do
-#    rack_app = File.expand_path(File.join(__dir__, 'streaming_app.ru'))
-#    @server = Microget::ServerRunner.new(:puma, "bundle exec puma --port %d %s", 9393, rack_app)
-#    @server.start!
-#  end
-#  
-#  after :all do
-#    @server.stop!
-#  end
+  before :all do
+    rack_app = File.expand_path(File.join(__dir__, 'streaming_app.ru'))
+    @server = Microget::ServerRunner.new(:puma, "bundle exec puma --port %d %s", 9393, rack_app)
+    @server.start!
+  end
+  
+  after :all do
+    @server.stop!
+  end
   
   describe '.perform_get' do
     
