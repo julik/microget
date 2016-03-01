@@ -24,7 +24,7 @@ It explicitly __does not support__:
 
 ## Usage
 
-To read in chunks of N bytes using non-blocking reads (via `IO.select()`):
+To read in chunks of N bytes using non-blocking reads:
 
     # Read in 5 megabyte chunks (assumes the upstream server is fast and you are connected
     # to it via an almost-local downlink):
@@ -32,7 +32,7 @@ To read in chunks of N bytes using non-blocking reads (via `IO.select()`):
       if status != 200
         raise "Whoopsie daisy"
       end
-      output << body_chunk
+      output << body_chunk # Please read the docs on buffer mutability
       true # Signal Microget that it should continue reading by yielding a truthy value from the block
     end
 

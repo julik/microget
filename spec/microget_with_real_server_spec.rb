@@ -44,15 +44,13 @@ describe "Microget running against a real server" do
         expect(status).to eq(200)
         expect(headers).to have_key('Content-Length')
         expect(body_chunk).to be_kind_of(String)
-        time_deltas_and_chunks << [Time.now - t, body_chunk]
+        time_deltas_and_chunks << [Time.now - t, body_chunk.dup]
         t = Time.now
       end
       
       first_chunk_and_delta = time_deltas_and_chunks.shift
       expect(first_chunk_and_delta[1]).to be_empty # First chunk is empty to allow header/status checks
-      time_deltas_and_chunks.each do |i|
-        $stderr.puts i.inspect
-      end
+
       time_deltas_and_chunks.each do |(delta, chunk_contents)|
         expect(chunk_contents).to include('Message number ')
         expect(delta).to be_within(0.2).of(1.0) # The server "drips" down one message every second, approximately

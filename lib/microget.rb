@@ -75,10 +75,24 @@ module Microget
   # Once the block returns a truthy value (or the HTTP response is read completely) the method
   # will return the number of bytes of the body it did read and terminate.
   #
+  # Please pay special attention to the last yielded argument. It is a _live_ buffer, it will
+  # be overwritten on the next invocation of the block. If you need to stash it somewhere, you
+  # should #dup it for later use. This is done to work _very_ conservatively with the Ruby GC,
+  # and to avoid creating an extra String for every socket receive (which is incredibly wasteful).
+  #
+  # So this:
+  #
+  #     body_parts = []
+  #     perform_get(uri) do | status, header_hash, body_chunk |
+  #       body_parts << body_chunk # will not work, all the elements will reference the same String
+  #     end
+  #
+  # might not be doing what you think it does.
+  #
   # @param uri[String] the full URI of the request
   # @param request_headers[Hash] all the request headers to send with the request
   # @param chunk_size[Numeric] what size to feed to read() when reading the response from the socket
-  # @yield [Array<Numeric, Hash, String>] the status code, the header hash and the chunk of the body data read.
+  # @yield [Array<Numeric, Hash, String>] status code, header hash, mutable buffer with the last chunk.
   # @return [Numeric] the total number of body bytes read from the socket 
   def perform_get(uri, request_headers: {}, timeout: SOCKET_TIMEOUT, chunk_size: 1024 * 1024 * 5)
     status_code, header_hash, socket = get_status_headers_and_body_socket(uri, 
@@ -172,8 +186,6 @@ module Microget
     # When kgio_tryread encounters a EAGAIN/EWOULDBLOCK, it will
     # clear our buffer with an empty string.
     # Apparently, this is intended behavior, because there is a test for it.
-    # So... what does one do? Well, let's keep a thread-local buffer, read into _that_,
-    # and if the read truly does succeed we will replace the outbuf.
     loop do
       result = sock.kgio_tryread(n_bytes, outbuf)
       if result == :wait_readable
@@ -194,11 +206,10 @@ module Microget
     # can deal with
     addrs = Socket.getaddrinfo(host, nil)
     addr = addrs[-1] # use the last one, the first one will be IPv6
-    
-    #puts addr[-1].inspect
     sockaddr = Socket.pack_sockaddr_in(port, addr[3])
     
     #(Socket::AF_INET, Socket::SOCK_STREAM, 0)
+    # Create a Kgio::Socket instead of the standard one
     Kgio::Socket.new(Socket.const_get(addr[0]), Socket::SOCK_STREAM, 0).tap do |socket|
       socket.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
  
