@@ -22,7 +22,7 @@ describe 'Microget' do
       
       expect(request_bytes).to eq(["GET /alive HTTP/1.1\r\n", "Host: 0.0.0.0:9393\r\n", "Connection: close\r\n", "\r\n"])
       
-      expect(status).to be_kind_of(Fixnum)
+      expect(status).to be_kind_of(Integer)
       expect(status).to eq(200)
       
       expect(headers).to be_kind_of(Hash)

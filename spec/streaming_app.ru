@@ -1,4 +1,5 @@
 require 'fileutils'
+require 'rack'
 
 # The test app
 class Streamer
@@ -34,8 +35,9 @@ end
 
 class HugeBody
   def each
+    rng = Random.new
     512.times do
-      yield SecureRandom.random_bytes(1024 * 1024)
+      yield(rng.bytes(1024 * 1024))
     end
   end
 end

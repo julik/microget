@@ -4,8 +4,7 @@ require 'socket'
 # An no-nonsense, pedal-to-the-metal unbuffered HTTP streaming client for doing GETs of large bodies, fast.
 module Microget
   autoload :ServerRunner, File.dirname(__FILE__) + '/microget/server_runner'
-  
-  VERSION = '1.1.2'
+  VERSION = '1.1.3'
   
   extend self
 
